@@ -26,19 +26,20 @@ only contain the variables of interest.}
 \item{v2}{name of variable 2}
 
 \item{method}{which type of model should we estimate?
-lv = latent variable model to test topology
-pconst = implement proportionality constraints on topology
+lv = latent variable model to test topology.
+pconst = implement proportionality constraints on topology.
 sat = just does saturated model (e.g., in case one wants only to check for
-some constraint on the correlation b/w variables)}
+some constraint on the correlation b/w variables).}
 
-\item{software}{which software package to use?}
+\item{software}{which software package to use? Note that use of
+\code{blavaan} is experimental.}
 
 \item{index}{which fit index to examine? Options depend on whether
 \code{lavaan} or \code{blavaan} was used to estimate the models.}
 
 \item{thresh}{threshold for determining whether the saturated model wins.
 Positive values result in a stronger preference for parsimony (i.e., items
-are redundant)}
+are redundant).}
 
 \item{warmstart}{use sample means and covariances to help w/ starting values?}
 
@@ -61,18 +62,55 @@ bfisub <- bfi[,1:25]
 bfisub <- na.omit(bfisub)
 
 # Check for redundancy for two variables
-# Use model-based approach based on proportionality of covariances
-# sample covariances for starting values
-# BIC for model selection
+# Use latent variable representation, BIC for model selection,
 # and saturated model needs to have BIC 3 lower than alternative model
 # to be selected.
-bic.res1 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3)
 
-# A Bayesian example
+# Additionally include threshold on correlation between two variables.
+# Also, slightly experimental as alternative to saturated model may
+# be difficult to estimate.
+bic.res2 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
+                        corconst = .5)
+                        
+# Decision in either text or boolean format
+bic.res2$Decision
+bic.res2$Redundant      
+
+# BIC for redundant and saturated (not redundant) models
+bic.res2$Selection$idx
+bic.res2$Selection$idxsat
+
+# Difference in BIC (here, redundant model wins by over 4)
+bic.res2$Selection$idxsat - bic.res2$Selection$idx 
+
+# possible error codes in fitting and model selection
+# bic.res2$fiterr
+# bic.res2$selerr
+
+# Where syntax is for fitting both models
+# bic.res2$Syntax
+
+# Where fitted models are
+# bic.res2$Fit
+
+# With different variables
+bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
+                        corconst = .5)
+
+# Use model-based approach based on proportionality of covariances,
+# sample covariances for starting values. Anecdotally, appears to have
+# more estimation difficulty than latent variable representation.
+#bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
+#                        warmstart=TRUE)
+
+
+# A Bayesian example (very experimental)
 library(blavaan)
 # future::plan("multisession")
-loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
-              method="lv",index="loo",thresh=3)
+#loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
+#               method="lv",index="loo",thresh=3)
 
 
 }

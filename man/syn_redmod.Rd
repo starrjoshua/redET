@@ -22,8 +22,8 @@ only contain the variables of interest.}
 \item{v2}{name of variable 2}
 
 \item{method}{which type of model should we estimate?
-lv = latent variable model to test topology; pconst = implement
-  proportionality constraints on topology
+lv = latent variable model to test topology. pconst = implement
+  proportionality constraints on topology.
 sat = just does saturated model (e.g., in case one wants only to check for
   some constraint on the correlation b/w variables)}
 

@@ -20,7 +20,8 @@ fit_redmod(
 \item{dat}{dataset; should be a data frame with column labels. Should also
 only contain the variables of interest.}
 
-\item{software}{which software package to use?}
+\item{software}{which software package to use? Note that use of
+\code{blavaan} is still experimental.}
 
 \item{likelihood}{for \code{lavaan}, which likelihood to use? (Used to
 override default behavior)}

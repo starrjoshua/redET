@@ -15,7 +15,7 @@ sel_redmod(fits, index = c("aic", "bic", "sic", "waic", "loo"), thresh = 0)
 
 \item{thresh}{threshold for determining whether the saturated model wins.
 Positive values result in a stronger preference for parsimony (i.e., items
-are redundant)}
+are redundant).}
 }
 \description{
 Does model selection

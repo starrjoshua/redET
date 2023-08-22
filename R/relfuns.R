@@ -10,8 +10,8 @@
 #' @param dat dataset; should be a data frame with column labels. Should also
 #' only contain the variables of interest.
 #' @param method which type of model should we estimate?
-#'  lv = latent variable model to test topology; pconst = implement
-#'    proportionality constraints on topology
+#'  lv = latent variable model to test topology. pconst = implement
+#'    proportionality constraints on topology.
 #'  sat = just does saturated model (e.g., in case one wants only to check for
 #'    some constraint on the correlation b/w variables)
 #' @param warmstart use sample means and covariances to help w/ starting values?
@@ -165,7 +165,8 @@ syn_redmod <- function(dat, v1, v2, method=c("lv","pconst","sat"),
 #' @param syn syntax of two models, as created by \code{syn_redmod}
 #' @param dat dataset; should be a data frame with column labels. Should also
 #'  only contain the variables of interest.
-#' @param software which software package to use?
+#' @param software which software package to use? Note that use of
+#'  \code{blavaan} is still experimental.
 #' @param likelihood for \code{lavaan}, which likelihood to use? (Used to
 #'  override default behavior)
 #' @param std.lv for \code{lavaan} and \code{blavaan}, whether to standardize
@@ -207,7 +208,7 @@ fit_redmod <- function(syn, dat, software = c("lavaan","blavaan"),
 #'  \code{lavaan} or \code{blavaan} was used to estimate the models.
 #' @param thresh threshold for determining whether the saturated model wins.
 #'  Positive values result in a stronger preference for parsimony (i.e., items
-#'  are redundant)
+#'  are redundant).
 #' @importFrom stats AIC BIC
 #' @importFrom blavaan blavCompare
 #' @importFrom semTools moreFitIndices
@@ -258,16 +259,17 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' @param v1 name of variable 1
 #' @param v2 name of variable 2
 #' @param method which type of model should we estimate?
-#'  lv = latent variable model to test topology
-#'  pconst = implement proportionality constraints on topology
+#'  lv = latent variable model to test topology.
+#'  pconst = implement proportionality constraints on topology.
 #'  sat = just does saturated model (e.g., in case one wants only to check for
-#'  some constraint on the correlation b/w variables)
-#' @param software which software package to use?
+#'  some constraint on the correlation b/w variables).
+#' @param software which software package to use? Note that use of
+#'  \code{blavaan} is experimental.
 #' @param index which fit index to examine? Options depend on whether
 #'  \code{lavaan} or \code{blavaan} was used to estimate the models.
 #' @param thresh threshold for determining whether the saturated model wins.
 #'  Positive values result in a stronger preference for parsimony (i.e., items
-#'  are redundant)
+#'  are redundant).
 #' @param warmstart use sample means and covariances to help w/ starting values?
 #' @param corconst if there should be any constraint on the model-implied
 #'  correlation between the two variables, put the value here. Defaults to no
@@ -286,18 +288,55 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' bfisub <- na.omit(bfisub)
 #'
 #' # Check for redundancy for two variables
-#' # Use model-based approach based on proportionality of covariances
-#' # sample covariances for starting values
-#' # BIC for model selection
+#' # Use latent variable representation, BIC for model selection,
 #' # and saturated model needs to have BIC 3 lower than alternative model
 #' # to be selected.
-#' bic.res1 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+#' bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3)
+#' 
+#' # Additionally include threshold on correlation between two variables.
+#' # Also, slightly experimental as alternative to saturated model may
+#' # be difficult to estimate.
+#' bic.res2 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
+#'                         corconst = .5)
+#'                         
+#' # Decision in either text or boolean format
+#' bic.res2$Decision
+#' bic.res2$Redundant      
+#' 
+#' # BIC for redundant and saturated (not redundant) models
+#' bic.res2$Selection$idx
+#' bic.res2$Selection$idxsat
+#' 
+#' # Difference in BIC (here, redundant model wins by over 4)
+#' bic.res2$Selection$idxsat - bic.res2$Selection$idx 
+#' 
+#' # possible error codes in fitting and model selection
+#' # bic.res2$fiterr
+#' # bic.res2$selerr
+#' 
+#' # Where syntax is for fitting both models
+#' # bic.res2$Syntax
+#' 
+#' # Where fitted models are
+#' # bic.res2$Fit
+#' 
+#' # With different variables
+#' bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+#' bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
+#'                         corconst = .5)
+#' 
+#' # Use model-based approach based on proportionality of covariances,
+#' # sample covariances for starting values. Anecdotally, appears to have
+#' # more estimation difficulty than latent variable representation.
+#' #bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
+#' #                        warmstart=TRUE)
 #'
-#' # A Bayesian example
+#' 
+#' # A Bayesian example (very experimental)
 #' library(blavaan)
 #' # future::plan("multisession")
-#' loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
-#'               method="lv",index="loo",thresh=3)
+#' #loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
+#' #               method="lv",index="loo",thresh=3)
 #'
 #'
 #' }
