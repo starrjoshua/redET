@@ -131,7 +131,9 @@ syn_redmod <- function(dat, v1, v2, method=c("lv","pconst","sat"),
     if(method=="lv"){
 
       # define correlation
-      modsyn <- paste(modsyn, paste0("r1 := l1*l2*vF1 / sqrt((l1^2*vF1 + e",v1,")*(l2^2*vF1 + e",v2,"))"), sep="\n")
+      #modsyn <- paste(modsyn, paste0("r12 := l1*l2*vF1 / sqrt((l1^2*vF1 + e",v1,")*(l2^2*vF1 + e",v2,"))"), sep="\n")
+      # lavaan does not like vF1 in definition if it is fixed
+      modsyn <- paste(modsyn, paste0("r12 := l1*l2 / sqrt((l1^2 + e",v1,")*(l2^2 + e",v2,"))"), sep="\n")
 
       #r12 := c12/sqrt(v1*v2)
     } else if (method=="pconst"){
@@ -142,7 +144,8 @@ syn_redmod <- function(dat, v1, v2, method=c("lv","pconst","sat"),
     }
 
     # apply inequality constraint
-    modsyn <- paste(modsyn, paste0(corconst, "< abs(r12)"), sep="\n")
+    #modsyn <- paste(modsyn, paste0(corconst, "< abs(r12)"), sep="\n")
+    modsyn <- paste(modsyn, paste0("abs(r12) > ", corconst), sep="\n")
 
   }
 
