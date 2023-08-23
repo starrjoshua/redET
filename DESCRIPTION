@@ -1,7 +1,7 @@
 Package: redET
 Type: Package
 Title: Testing of Equivalent Items
-Version: 0.1.0
+Version: 0.1.1
 Author: Joshua Starr and Carl F. Falk
 Maintainer: Joshua Starr <joshua.starr@mail.mcgill.ca>
 Description: This package provides an interface for testing equivalency (or, redundancy) 
