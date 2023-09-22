@@ -1,6 +1,7 @@
 # Model-based functions to take into account error (reliability)
 # 2023-07-11 Carl F. Falk
 # 2023-07-17 CFF - adding documentation
+# 2023-08-22 CFF - change some defaults for model fitting, bugfix
 
 #' Create (b)lavaan syntax to fit two alternative models
 #'
@@ -174,29 +175,44 @@ syn_redmod <- function(dat, v1, v2, method=c("lv","pconst","sat"),
 #' @param auto.fix.first for \code{lavaan} and \code{blabvaan}, whether to fix
 #'  loading for first item of each latent variable to one (Used to override
 #'  default behavior)
+#' @param h1 See documentation for \code{lavOptions}.
+#' @param baseline See documentation for \code{lavOptions}.
 #' @param ... Additional arguments passed to \code{lavaan} or \code{blavaan}
 #' @import lavaan
 #' @import blavaan
 #' @export
+# TODO: convergence of blavaan models
 fit_redmod <- function(syn, dat, software = c("lavaan","blavaan"),
                        likelihood="wishart", std.lv=TRUE, auto.fix.first=FALSE,
+                       h1=FALSE, baseline=FALSE,
                        ...){
 
   software <- match.arg(software)
 
   if(software =="lavaan"){
-    fitsat <- lavaan(syn$modsat, dat, likelihood="wishart", ...)
-    fit <- lavaan(syn$mod, dat, likelihood="wishart", std.lv=std.lv, auto.fix.first=auto.fix.first, ...)
+    fitsat <- lavaan(syn$modsat, dat, likelihood=likelihood, h1=h1,
+                     baseline=baseline, ...)
+    fit <- lavaan(syn$mod, dat, likelihood=likelihood, std.lv=std.lv,
+                  auto.fix.first=auto.fix.first, h1=h1, baseline=baseline, ...)
+    out <- list(
+      Fit = fit,
+      Fitsat = fitsat,
+      software = software,
+      conv = lavInspect(fit, "converged"),
+      convsat = lavInspect(fitsat, "converged")
+    )
   } else if (software =="blavaan"){
     fitsat <- blavaan(syn$modsat, dat, ...)
-    fit <- blavaan(syn$mod, dat, std.lv=std.lv, auto.fix.first=auto.fix.first, ...)
+    fit <- blavaan(syn$mod, dat, std.lv=std.lv, auto.fix.first=auto.fix.first,
+                   h1=h1, baseline=baseline, ...)
+    out <- list(
+      Fit = fit,
+      Fitsat = fitsat,
+      software = software
+    )
   }
 
-  out <- list(
-    Fit = fit,
-    Fitsat = fitsat,
-    software = software
-  )
+  return(out)
 
 }
 
@@ -243,6 +259,9 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 
   # does the saturated model win?
   satpreferred <- ifelse((idxsat - idx) < thresh, TRUE, FALSE)
+  
+  # if lavaan used and either model not converged, declare NA (i.e., inconclusive)
+  if(fits$software=="lavaan" & !fits$conv | !fits$convsat){satpreferred <- NA}
 
   out <- list(satpreferred = satpreferred,
               idx = idx,
@@ -276,7 +295,22 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #'  such constraint (i.e., test only topology)
 #' @param ... Additional arguments passed to \code{lavaan} or \code{blavaan}
 #'
-#'
+#' @details
+#' This function attempts to automate the procedure used by Starr and Falk
+#' (see references) for detecting redundant items using a model-based approach.
+#' A saturated model is compared to one in which the two items in question
+#' are represented as either a single latent variable, or in which the items'
+#' covariances are subject to proportionality constraints. If the latter model
+#' fits better than the saturated model (according to information criteria, 
+#' and optionally some threshold on how much improved model fit must be), the
+#' items may be flagged as possibly redundant.
+#' 
+#' Note that although the function has been evaluated in simulations, it is very
+#' new and any issues in model fitting should be reported to the authors. Note
+#' that use of blavaan has not yet been evaluated in simulations.
+#' @references Starr, J., \& Falk, C.F. On the testing of equivalent items:
+#' Perfect correlations and correlational topology. Preprint:
+#' https://doi.org/10.31234/osf.io/vhgfk
 #' @export
 #' @examples
 #' \dontrun{
@@ -291,13 +325,14 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' # Use latent variable representation, BIC for model selection,
 #' # and saturated model needs to have BIC 3 lower than alternative model
 #' # to be selected.
-#' bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3)
+#' bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
+#'                         optim.method="BFGS")
 #' 
 #' # Additionally include threshold on correlation between two variables.
 #' # Also, slightly experimental as alternative to saturated model may
 #' # be difficult to estimate.
 #' bic.res2 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
-#'                         corconst = .5)
+#'                         corconst = .5, optim.method="BFGS")
 #'                         
 #' # Decision in either text or boolean format
 #' bic.res2$Decision
@@ -321,15 +356,16 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' # bic.res2$Fit
 #' 
 #' # With different variables
-#' bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+#' bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3,
+#'                         optim.method="BFGS")
 #' bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
-#'                         corconst = .5)
+#'                         corconst = .5, optim.method="BFGS")
 #' 
 #' # Use model-based approach based on proportionality of covariances,
 #' # sample covariances for starting values. Anecdotally, appears to have
 #' # more estimation difficulty than latent variable representation.
 #' #bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
-#' #                        warmstart=TRUE)
+#' #                        warmstart=TRUE, optim.method="BFGS")
 #'
 #' 
 #' # A Bayesian example (very experimental)
@@ -360,8 +396,14 @@ redmod_pair <- function(dat, v1, v2, method=c("lv","pconst","sat"), software=c("
     out$Selection <- try(sel_redmod(out$Fit, index=index, thresh=thresh))
 
     if(!inherits(out$Selection, "try-error")){
-      out$Decision <- ifelse(out$Selection$satpreferred, "Not Redundant", "Redundant")
-      out$Redundant <- ifelse(out$Selection$satpreferred, FALSE, TRUE)
+      if(is.na(out$Selection$satpreferred)){
+        out$Fiterr <- TRUE
+        out$Decision <- "Inconclusive"
+        out$Redundant <- NA       
+      } else {
+        out$Decision <- ifelse(out$Selection$satpreferred, "Not Redundant", "Redundant")
+        out$Redundant <- ifelse(out$Selection$satpreferred, FALSE, TRUE)
+      }
     } else {
       out$Selectionerr <- TRUE
       out$Decision <- "Inconclusive"

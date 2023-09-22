@@ -52,6 +52,20 @@ such constraint (i.e., test only topology)}
 \description{
 Wrapper to compare two variables at a time using model-based approach
 }
+\details{
+This function attempts to automate the procedure used by Starr and Falk
+(see references) for detecting redundant items using a model-based approach.
+A saturated model is compared to one in which the two items in question
+are represented as either a single latent variable, or in which the items'
+covariances are subject to proportionality constraints. If the latter model
+fits better than the saturated model (according to information criteria, 
+and optionally some threshold on how much improved model fit must be), the
+items may be flagged as possibly redundant.
+
+Note that although the function has been evaluated in simulations, it is very
+new and any issues in model fitting should be reported to the authors. Note
+that use of blavaan has not yet been evaluated in simulations.
+}
 \examples{
 \dontrun{
 # Example with bfi dataset from psych package
@@ -65,13 +79,14 @@ bfisub <- na.omit(bfisub)
 # Use latent variable representation, BIC for model selection,
 # and saturated model needs to have BIC 3 lower than alternative model
 # to be selected.
-bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3)
+bic.res1 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
+                        optim.method="BFGS")
 
 # Additionally include threshold on correlation between two variables.
 # Also, slightly experimental as alternative to saturated model may
 # be difficult to estimate.
 bic.res2 <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic", thresh=3,
-                        corconst = .5)
+                        corconst = .5, optim.method="BFGS")
                         
 # Decision in either text or boolean format
 bic.res2$Decision
@@ -95,15 +110,16 @@ bic.res2$Selection$idxsat - bic.res2$Selection$idx
 # bic.res2$Fit
 
 # With different variables
-bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3)
+bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3,
+                        optim.method="BFGS")
 bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
-                        corconst = .5)
+                        corconst = .5, optim.method="BFGS")
 
 # Use model-based approach based on proportionality of covariances,
 # sample covariances for starting values. Anecdotally, appears to have
 # more estimation difficulty than latent variable representation.
 #bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
-#                        warmstart=TRUE)
+#                        warmstart=TRUE, optim.method="BFGS")
 
 
 # A Bayesian example (very experimental)
@@ -114,4 +130,9 @@ library(blavaan)
 
 
 }
+}
+\references{
+Starr, J., \& Falk, C.F. On the testing of equivalent items:
+Perfect correlations and correlational topology. Preprint:
+https://doi.org/10.31234/osf.io/vhgfk
 }

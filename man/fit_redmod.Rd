@@ -11,6 +11,8 @@ fit_redmod(
   likelihood = "wishart",
   std.lv = TRUE,
   auto.fix.first = FALSE,
+  h1 = FALSE,
+  baseline = FALSE,
   ...
 )
 }
@@ -32,6 +34,10 @@ latent variables (Used to override default behavior)}
 \item{auto.fix.first}{for \code{lavaan} and \code{blabvaan}, whether to fix
 loading for first item of each latent variable to one (Used to override
 default behavior)}
+
+\item{h1}{See documentation for \code{lavOptions}.}
+
+\item{baseline}{See documentation for \code{lavOptions}.}
 
 \item{...}{Additional arguments passed to \code{lavaan} or \code{blavaan}}
 }
