@@ -4,7 +4,12 @@
 \alias{sel_redmod}
 \title{Does model selection}
 \usage{
-sel_redmod(fits, index = c("aic", "bic", "sic", "waic", "loo"), thresh = 0)
+sel_redmod(
+  fits,
+  index = c("aic", "bic", "sic", "waic", "loo"),
+  thresh = 0,
+  fitsat = TRUE
+)
 }
 \arguments{
 \item{fits}{two fitted models, as created by \code{syn_redmod} then
@@ -16,7 +21,30 @@ sel_redmod(fits, index = c("aic", "bic", "sic", "waic", "loo"), thresh = 0)
 \item{thresh}{threshold for determining whether the saturated model wins.
 Positive values result in a stronger preference for parsimony (i.e., items
 are redundant).}
+
+\item{fitsat}{Boolean value indicating whether saturated model was fit, or
+whether we should try to extract information criteria for saturated model
+from the restricted model (only possible with \code{lavaan} and AIC, BIC).}
 }
 \description{
 Does model selection
+}
+\examples{
+# Example with bfi dataset from psych package
+\donttest{
+library(psych)
+bfisub <- bfi[,1:25]
+
+# remove any rows with missing data
+bfisub <- na.omit(bfisub)
+
+# obtain syntax
+syntax <- syn_redmod(bfisub, "A1", "A2")
+
+# fit models
+fit <- fit_redmod(syntax, bfisub, software = "lavaan")
+
+# do model selection
+sel_redmod(fit, index="aic")
+}
 }

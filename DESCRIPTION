@@ -1,7 +1,7 @@
 Package: redET
 Type: Package
 Title: Testing of Equivalent Items
-Version: 0.1.2
+Version: 0.2.0
 Author: Joshua Starr and Carl F. Falk
 Maintainer: Joshua Starr <joshua.starr@mail.mcgill.ca>
 Description: This package provides an interface for testing equivalency (or, redundancy) 
@@ -13,4 +13,6 @@ Imports:
   blavaan,
   lavaan,
   semTools
-RoxygenNote: 7.2.3
+Suggests:
+  psych
+RoxygenNote: 7.3.1

@@ -19,7 +19,19 @@
 #' @param corconst if there should be any constraint on the model-implied
 #'   correlation between the two variables, put the value here. Defaults to no
 #'   such constraint (i.e., test only topology)
+#' @examples
+#' \donttest{
+#' # Example with bfi dataset from psych package
+#' library(psych)
+#' bfisub <- bfi[,1:25]
 #'
+#' # remove any rows with missing data
+#' bfisub <- na.omit(bfisub)
+#' 
+#' syntax <- syn_redmod(bfisub, "A1", "A2")
+#' cat(syntax$mod) # syntax for restricted model
+#' cat(syntax$modsat) # syntax for saturated model
+#' }
 #' @export
 # TODO: is it possible to parameterize corconst in terms of standardized loadings?
 # TODO: input checking so that variable names don't conflict with parameter labels
@@ -177,21 +189,47 @@ syn_redmod <- function(dat, v1, v2, method=c("lv","pconst","sat"),
 #'  default behavior)
 #' @param h1 See documentation for \code{lavOptions}.
 #' @param baseline See documentation for \code{lavOptions}.
+#' @param fitsat Boolean value indicating whether to even try to fit the saturated model.
 #' @param ... Additional arguments passed to \code{lavaan} or \code{blavaan}
-#' @import lavaan
-#' @import blavaan
+#' @importFrom lavaan lavaan lavInspect
+#' @importFrom blavaan blavaan
+#' @examples
+#' \donttest{
+#' # Example with bfi dataset from psych package
+#' library(psych)
+#' bfisub <- bfi[,1:25]
+#'
+#' # remove any rows with missing data
+#' bfisub <- na.omit(bfisub)
+#' 
+#' # obtain syntax
+#' syntax <- syn_redmod(bfisub, "A1", "A2")
+#' 
+#' # fit models
+#' fit <- fit_redmod(syntax, bfisub, software = "lavaan")
+#' 
+#' fit$Fit # restricted model
+#' fit$Fitsat # saturated model
+#' }
 #' @export
 # TODO: convergence of blavaan models
 fit_redmod <- function(syn, dat, software = c("lavaan","blavaan"),
                        likelihood="wishart", std.lv=TRUE, auto.fix.first=FALSE,
-                       h1=FALSE, baseline=FALSE,
+                       h1=FALSE, baseline=FALSE, fitsat = TRUE,
                        ...){
 
   software <- match.arg(software)
 
   if(software =="lavaan"){
-    fitsat <- lavaan(syn$modsat, dat, likelihood=likelihood, h1=h1,
-                     baseline=baseline, ...)
+    if(fitsat){
+      fitsat <- lavaan(syn$modsat, dat, likelihood=likelihood, h1=h1,
+                       baseline=baseline, ...)
+      convsat <- lavInspect(fitsat, "converged")
+    } else {
+      fitsat <- NULL
+      convsat <- NULL
+    }
+
     fit <- lavaan(syn$mod, dat, likelihood=likelihood, std.lv=std.lv,
                   auto.fix.first=auto.fix.first, h1=h1, baseline=baseline, ...)
     out <- list(
@@ -199,10 +237,15 @@ fit_redmod <- function(syn, dat, software = c("lavaan","blavaan"),
       Fitsat = fitsat,
       software = software,
       conv = lavInspect(fit, "converged"),
-      convsat = lavInspect(fitsat, "converged")
+      convsat = convsat
     )
   } else if (software =="blavaan"){
-    fitsat <- blavaan(syn$modsat, dat, ...)
+    if(fitsat){
+      fitsat <- blavaan(syn$modsat, dat, ...)
+    } else {
+      warning("Model comparisons not possible with blavaan if saturated model is not estimated")
+      fitsat <- NULL
+    }
     fit <- blavaan(syn$mod, dat, std.lv=std.lv, auto.fix.first=auto.fix.first,
                    h1=h1, baseline=baseline, ...)
     out <- list(
@@ -225,21 +268,56 @@ fit_redmod <- function(syn, dat, software = c("lavaan","blavaan"),
 #' @param thresh threshold for determining whether the saturated model wins.
 #'  Positive values result in a stronger preference for parsimony (i.e., items
 #'  are redundant).
+#' @param fitsat Boolean value indicating whether saturated model was fit, or
+#'  whether we should try to extract information criteria for saturated model
+#'  from the restricted model (only possible with \code{lavaan} and AIC, BIC).
 #' @importFrom stats AIC BIC
+#' @importFrom lavaan fitmeasures
 #' @importFrom blavaan blavCompare
 #' @importFrom semTools moreFitIndices
+#' @examples
+#' # Example with bfi dataset from psych package
+#' \donttest{
+#' library(psych)
+#' bfisub <- bfi[,1:25]
+#'
+#' # remove any rows with missing data
+#' bfisub <- na.omit(bfisub)
+#' 
+#' # obtain syntax
+#' syntax <- syn_redmod(bfisub, "A1", "A2")
+#' 
+#' # fit models
+#' fit <- fit_redmod(syntax, bfisub, software = "lavaan")
+#' 
+#' # do model selection
+#' sel_redmod(fit, index="aic")
+#' }
 #' @export
-sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
+sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0,
+                       fitsat = TRUE){
   index <- match.arg(index)
 
   if(fits$software=="lavaan"){
     stopifnot(index %in% c("aic","bic","sic"))
     if(index == "aic"){
       idx <- AIC(fits$Fit)
-      idxsat <- AIC(fits$Fitsat)
+      if(is.null(fits$Fitsat)){
+        fm <- fitmeasures(fits$Fit)
+        N <- lavInspect(fits$Fit, "nobs")
+        idxsat <- unname(-2*fm["unrestricted.logl"] + 2*fm["npar"])
+      } else {
+        idxsat <- AIC(fits$Fitsat)        
+      }
     } else if (index == "bic"){
       idx <- BIC(fits$Fit)
-      idxsat <- BIC(fits$Fitsat)
+      if(is.null(fits$Fitsat)){
+        fm <- fitmeasures(fits$Fit)
+        N <- lavInspect(fits$Fit, "nobs")
+        idxsat <- unname(-2*fm["unrestricted.logl"] + fm["npar"]*log(N))
+      } else {
+        idxsat <- BIC(fits$Fitsat)        
+      }
     } else if (index == "sic"){
       idx <- moreFitIndices(fits$Fit, "sic")
       idxsat <- moreFitIndices(fits$Fitsat, "sic")
@@ -261,7 +339,7 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
   satpreferred <- ifelse((idxsat - idx) < thresh, TRUE, FALSE)
   
   # if lavaan used and either model not converged, declare NA (i.e., inconclusive)
-  if(fits$software=="lavaan" & !fits$conv | !fits$convsat){satpreferred <- NA}
+  if(fits$software=="lavaan" & (!fits$conv | (ifelse(is.null(fits$convsat),FALSE,!fits$convsat)) )){satpreferred <- NA}    
 
   out <- list(satpreferred = satpreferred,
               idx = idx,
@@ -284,6 +362,10 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #'  some constraint on the correlation b/w variables).
 #' @param software which software package to use? Note that use of
 #'  \code{blavaan} is experimental.
+#' @param fitsat Boolean value indicating whether to even try to fit the
+#'  saturated model. Necessary if \code{blavaan} is used, but for \code{lavaan},
+#'  we can compute AIC, BIC based on other information already stored the
+#'  object for the restricted model.
 #' @param index which fit index to examine? Options depend on whether
 #'  \code{lavaan} or \code{blavaan} was used to estimate the models.
 #' @param thresh threshold for determining whether the saturated model wins.
@@ -308,13 +390,12 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' Note that although the function has been evaluated in simulations, it is very
 #' new and any issues in model fitting should be reported to the authors. Note
 #' that use of blavaan has not yet been evaluated in simulations.
-#' @references Starr, J., \& Falk, C.F. On the testing of equivalent items:
+#' @references Starr, J., & Falk, C.F. On the testing of equivalent items:
 #' Perfect correlations and correlational topology. Preprint:
 #' https://doi.org/10.31234/osf.io/vhgfk
-#' @export
 #' @examples
-#' \dontrun{
 #' # Example with bfi dataset from psych package
+#' \donttest{
 #' library(psych)
 #' bfisub <- bfi[,1:25]
 #'
@@ -346,38 +427,45 @@ sel_redmod <- function(fits, index=c("aic","bic","sic","waic","loo"), thresh=0){
 #' bic.res2$Selection$idxsat - bic.res2$Selection$idx 
 #' 
 #' # possible error codes in fitting and model selection
-#' # bic.res2$fiterr
-#' # bic.res2$selerr
+#' bic.res2$fiterr
+#' bic.res2$selerr
 #' 
 #' # Where syntax is for fitting both models
-#' # bic.res2$Syntax
+#' bic.res2$Syntax
 #' 
 #' # Where fitted models are
-#' # bic.res2$Fit
+#' bic.res2$Fit
 #' 
 #' # With different variables
 #' bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3,
 #'                         optim.method="BFGS")
 #' bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
 #'                         corconst = .5, optim.method="BFGS")
+#'
+#' # circumvent manual fitting of saturated model, using h1 from lavaan for fit
+#' bic.res.nosat <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic",
+#'                         optim.method="BFGS", fitsat=FALSE)
 #' 
 #' # Use model-based approach based on proportionality of covariances,
 #' # sample covariances for starting values. Anecdotally, appears to have
 #' # more estimation difficulty than latent variable representation.
-#' #bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
-#' #                        warmstart=TRUE, optim.method="BFGS")
-#'
-#' 
+#' bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
+#'                         warmstart=TRUE, optim.method="BFGS")
+#' }
+#' \dontrun{
 #' # A Bayesian example (very experimental)
 #' library(blavaan)
-#' # future::plan("multisession")
-#' #loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
-#' #               method="lv",index="loo",thresh=3)
+#' #future::plan("multisession")
+#' loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
+#'                method="lv",index="loo",thresh=3)
 #'
 #'
 #' }
+#' @export
 #TODO: warning handling
-redmod_pair <- function(dat, v1, v2, method=c("lv","pconst","sat"), software=c("lavaan","blavaan"),
+redmod_pair <- function(dat, v1, v2, method=c("lv","pconst","sat"),
+                        software=c("lavaan","blavaan"),
+                        fitsat = TRUE,
                         index=c("aic","bic","sic","waic","loo"), thresh=0,
                         warmstart=FALSE, corconst=NULL, ...){
 
@@ -389,7 +477,7 @@ redmod_pair <- function(dat, v1, v2, method=c("lv","pconst","sat"), software=c("
   out$Syntax <- syn_redmod(dat, v1, v2, method=method, warmstart=warmstart, corconst=corconst)
 
   # fit models
-  out$Fit <- try(fit_redmod(out$Syntax, dat, software=software, ...))
+  out$Fit <- try(fit_redmod(out$Syntax, dat, software=software, fitsat=fitsat, ...))
 
   # do model selection w/ some error handling
   if(!inherits(out$Fit, "try-error")){

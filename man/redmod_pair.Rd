@@ -10,6 +10,7 @@ redmod_pair(
   v2,
   method = c("lv", "pconst", "sat"),
   software = c("lavaan", "blavaan"),
+  fitsat = TRUE,
   index = c("aic", "bic", "sic", "waic", "loo"),
   thresh = 0,
   warmstart = FALSE,
@@ -33,6 +34,11 @@ some constraint on the correlation b/w variables).}
 
 \item{software}{which software package to use? Note that use of
 \code{blavaan} is experimental.}
+
+\item{fitsat}{Boolean value indicating whether to even try to fit the
+saturated model. Necessary if \code{blavaan} is used, but for \code{lavaan},
+we can compute AIC, BIC based on other information already stored the
+object for the restricted model.}
 
 \item{index}{which fit index to examine? Options depend on whether
 \code{lavaan} or \code{blavaan} was used to estimate the models.}
@@ -67,8 +73,8 @@ new and any issues in model fitting should be reported to the authors. Note
 that use of blavaan has not yet been evaluated in simulations.
 }
 \examples{
-\dontrun{
 # Example with bfi dataset from psych package
+\donttest{
 library(psych)
 bfisub <- bfi[,1:25]
 
@@ -100,14 +106,14 @@ bic.res2$Selection$idxsat
 bic.res2$Selection$idxsat - bic.res2$Selection$idx 
 
 # possible error codes in fitting and model selection
-# bic.res2$fiterr
-# bic.res2$selerr
+bic.res2$fiterr
+bic.res2$selerr
 
 # Where syntax is for fitting both models
-# bic.res2$Syntax
+bic.res2$Syntax
 
 # Where fitted models are
-# bic.res2$Fit
+bic.res2$Fit
 
 # With different variables
 bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3,
@@ -115,24 +121,28 @@ bic.res3 <- redmod_pair(bfisub,"A1","A2",method="lv",index="bic", thresh=3,
 bic.res4 <- redmod_pair(bfisub,"A2","A1",method="lv",index="bic", thresh=3,
                         corconst = .5, optim.method="BFGS")
 
+# circumvent manual fitting of saturated model, using h1 from lavaan for fit
+bic.res.nosat <- redmod_pair(bfisub,"A2","A3",method="lv",index="bic",
+                        optim.method="BFGS", fitsat=FALSE)
+
 # Use model-based approach based on proportionality of covariances,
 # sample covariances for starting values. Anecdotally, appears to have
 # more estimation difficulty than latent variable representation.
-#bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
-#                        warmstart=TRUE, optim.method="BFGS")
-
-
+bic.res5 <- redmod_pair(bfisub,"A2","A3",method="pconst",index="bic", thresh=3,
+                        warmstart=TRUE, optim.method="BFGS")
+}
+\dontrun{
 # A Bayesian example (very experimental)
 library(blavaan)
-# future::plan("multisession")
-#loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
-#               method="lv",index="loo",thresh=3)
+#future::plan("multisession")
+loo.res1 <- redmod_pair(bfisub,"A1","A2",software="blavaan",
+               method="lv",index="loo",thresh=3)
 
 
 }
 }
 \references{
-Starr, J., \& Falk, C.F. On the testing of equivalent items:
+Starr, J., & Falk, C.F. On the testing of equivalent items:
 Perfect correlations and correlational topology. Preprint:
 https://doi.org/10.31234/osf.io/vhgfk
 }

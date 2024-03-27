@@ -13,6 +13,7 @@ fit_redmod(
   auto.fix.first = FALSE,
   h1 = FALSE,
   baseline = FALSE,
+  fitsat = TRUE,
   ...
 )
 }
@@ -39,8 +40,29 @@ default behavior)}
 
 \item{baseline}{See documentation for \code{lavOptions}.}
 
+\item{fitsat}{Boolean value indicating whether to even try to fit the saturated model.}
+
 \item{...}{Additional arguments passed to \code{lavaan} or \code{blavaan}}
 }
 \description{
 Fits two alternative (b)lavaan models for purposes of comparing item overlap
+}
+\examples{
+\donttest{
+# Example with bfi dataset from psych package
+library(psych)
+bfisub <- bfi[,1:25]
+
+# remove any rows with missing data
+bfisub <- na.omit(bfisub)
+
+# obtain syntax
+syntax <- syn_redmod(bfisub, "A1", "A2")
+
+# fit models
+fit <- fit_redmod(syntax, bfisub, software = "lavaan")
+
+fit$Fit # restricted model
+fit$Fitsat # saturated model
+}
 }

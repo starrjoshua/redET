@@ -36,3 +36,17 @@ such constraint (i.e., test only topology)}
 \description{
 One model is saturated; other assumes two items measure same construct
 }
+\examples{
+\donttest{
+# Example with bfi dataset from psych package
+library(psych)
+bfisub <- bfi[,1:25]
+
+# remove any rows with missing data
+bfisub <- na.omit(bfisub)
+
+syntax <- syn_redmod(bfisub, "A1", "A2")
+cat(syntax$mod) # syntax for restricted model
+cat(syntax$modsat) # syntax for saturated model
+}
+}
